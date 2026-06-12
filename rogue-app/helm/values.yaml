@@ -1,0 +1,34 @@
+image:
+  name: rogue-app
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicas: 1
+
+namespace: default
+
+serviceAccount:
+  create: true
+  name: demo-app-rogue-sa
+
+service:
+  type: NodePort
+  port: 8081
+  targetPort: 8081
+
+swa:
+  agentSocketPath: /tmp/swa-agent/public/api.sock
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 5
+  periodSeconds: 10

@@ -1,0 +1,51 @@
+# Go
+*.o
+*.a
+*.so
+.DS_Store
+app/demo-app
+*.out
+dist/*
+!dist/.gitkeep
+
+# Test coverage
+*.out
+coverage.html
+
+# Terraform
+*.tfstate
+*.tfstate.*
+tfplan
+.terraform/
+.terraform.lock.hcl
+.terraformrc
+
+# Environment
+.env
+setup.env
+.env.local
+.env.*.local
+kubeconfig
+terraform/environments/kind/*-config
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build
+bin/
+build/
+
+# Generated documentation
+TASKS.md
+combined.html
+swa-release
+
+# Temp
+**/tmp
+**/Archive
+**/*.bak
+**/*.BAK

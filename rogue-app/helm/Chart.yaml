@@ -1,0 +1,14 @@
+apiVersion: v2
+name: rogue-app
+description: A minimal rogue application to demonstrate SWA authorization boundaries
+type: application
+version: 0.1.0
+appVersion: "0.1"
+
+keywords:
+  - demo
+  - azure
+  - go
+
+maintainers:
+  - name: Demo App Team

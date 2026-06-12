@@ -1,0 +1,302 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+dotenv: ["setup.env"]
+
+tasks:
+  # ============================================================
+  # INITIALIZATION & SETUP
+  # ============================================================
+
+  bootstrap:
+    desc: Validate prerequisites, setup.env, and Azure authentication
+    cmds:
+      - bash ./scripts/bootstrap.sh
+
+  # ============================================================
+  # CLI LOGIN
+  # ============================================================
+
+  conjur:init:
+    desc: Initialize secrets manager cli
+    preconditions:
+      - sh: test -n "${CONJUR_APPLIANCE_URL}"
+        msg: "CONJUR_APPLIANCE_URL not set - update setup.env"
+    cmds:
+      - conjur init saas -u $CONJUR_APPLIANCE_URL
+  conjur:login:
+    desc: Login to secrets manager, i.e. $ conjur login or conjur login -i $CONJUR_USER -p $CONJUR_PASS
+    cmds:
+      - |
+        if [ -n "$CONJUR_USER" ] && [ -n "$CONJUR_PASS" ]; then
+          conjur login -i $CONJUR_USER -p $CONJUR_PASS
+        else
+          conjur login
+        fi
+      - conjur whoami
+
+  az:login:
+    desc: Login to Azure with az cli
+    preconditions:
+      - sh: test -n "${AZURE_TENANT_ID}"
+        msg: "AZURE_TENANT_ID not set - update setup.env"
+    cmds:
+      - |
+        AID=$(az account show --query tenantId --output tsv 2> /dev/null || true)
+        if [ "$AZURE_TENANT_ID" != "$AID" ]; then 
+          az login --tenant "$AZURE_TENANT_ID"
+        fi
+  az:create-resource-group:
+    desc: Create azure resource group
+    preconditions:
+      - sh: test -n "${AZURE_RESOURCE_GROUP}"
+        msg: "AZURE_RESOURCE_GROUP not set - update setup.env"
+      - sh: test -n "${AZURE_REGION}"
+        msg: "AZURE_REGION not set - update setup.env"
+    cmds:
+      - az group create --name "$AZURE_RESOURCE_GROUP" --location "$AZURE_REGION"
+  az:delete-resource-group:
+    desc: Delete azure resource group
+    preconditions:
+      - sh: test -n "${AZURE_RESOURCE_GROUP}"
+        msg: "AZURE_RESOURCE_GROUP not set - update setup.env"
+    cmds:
+      - az group delete --name "$AZURE_RESOURCE_GROUP" --yes
+
+  # ============================================================
+  # APPLICATION
+  # ============================================================
+
+  app:docker-build:
+    desc: Build the Go docker container
+    dir: ./app
+    cmds:
+      - docker build -t $APP_NAME:$APP_TAG .
+      - echo "To load images into kind, run $ task kind:load-app-image"
+  app:helm-deploy:
+    desc: Deploy demo-app to kind cluster using Helm (with Terraform outputs)
+    preconditions:
+      - sh: command -v helm
+        msg: "helm not found - install Helm"
+      - sh: test -n "$SWA_CLUSTER_NAME"
+        msg: "SWA_CLUSTER_NAME not set - update setup.env"
+      - sh: test -n "${SWA_AGENT_SOCKET_PATH}"
+        msg: "SWA_AGENT_SOCKET_PATH not set - update setup.env"
+      - sh: test -n "${APP_NAMESPACE}"
+        msg: "APP_NAMESPACE not set - update setup.env"
+    cmds:
+      - bash ./scripts/app-helm-deploy.sh
+  app:helm-uninstall:
+    desc: Uninstall demo-app from cluster using Helm
+    cmds:
+      - |
+        echo "=== Uninstall demo-app from k8s cluster ==="
+        echo "= Namespace: $APP_NAMESPACE"
+        helm uninstall demo-app -n "$APP_NAMESPACE"
+        echo "✓ demo-app uninstalled from $APP_NAMESPACE namespace"
+  app:seed-blob:
+    desc: Seed Azure Blob Storage read container with hello.txt
+    preconditions:
+      - sh: command -v az
+        msg: "az cli not found - install Azure CLI"
+    cmds:
+      - bash ./scripts/seed-blob.sh
+  app:redeploy:
+    desc: Rebuild and redeploy app
+    cmds:
+      - task: app:docker-build
+      - task: kind:load-app-image
+      - task: app:helm-deploy
+      - kubectl rollout restart deployment/$APP_NAME -n $APP_NAMESPACE
+  rogue-app:docker-build:
+    desc: Build the Go docker container
+    dir: ./rogue-app
+    cmds:
+      - docker build -t $ROGUE_APP_NAME:$ROGUE_APP_TAG .
+      - echo "To load images into kind, run $ task kind:load-rogue-app-image"
+  rogue-app:helm-deploy:
+    desc: Deploy demo-rogue-app to kind cluster using Helm (with Terraform outputs)
+    preconditions:
+      - sh: command -v helm
+        msg: "helm not found - install Helm"
+      - sh: test -n "$SWA_CLUSTER_NAME"
+        msg: "SWA_CLUSTER_NAME not set - update setup.env"
+      - sh: test -n "${SWA_AGENT_SOCKET_PATH}"
+        msg: "SWA_AGENT_SOCKET_PATH not set - update setup.env"
+      - sh: test -n "${ROGUE_APP_NAMESPACE}"
+        msg: "ROGUE_APP_NAMESPACE not set - update setup.env"
+    cmds:
+      - bash ./scripts/rogue-app-helm-deploy.sh
+  rogue-app:helm-uninstall:
+    desc: Uninstall demo-app from cluster using Helm
+    cmds:
+      - |
+        echo "=== Uninstall demo-app from k8s cluster ==="
+        echo "= Namespace: $APP_NAMESPACE"
+        helm uninstall demo-app -n "$APP_NAMESPACE"
+        echo "✓ demo-app uninstalled from $APP_NAMESPACE namespace"
+  rogue-app:redeploy:
+    desc: Rebuild and redeploy rogue-app
+    cmds:
+      - task: rogue-app:docker-build
+      - task: kind:load-rogue-app-image
+      - task: rogue-app:helm-deploy
+      - kubectl rollout restart deployment/$ROGUE_APP_NAME -n $ROGUE_APP_NAMESPACE
+
+  # ============================================================
+  # SWA
+  # ============================================================
+
+  swa:extract:
+    desc: Extract SWA release tarball to swa-release/
+    cmds:
+      - bash ./scripts/extract-swa.sh
+  swa:prep:
+    desc: Prepare SWA release (extract helm charts, install provider, validate versions)
+    cmds:
+      - bash ./scripts/swa-release-prep.sh
+  swa:mac-fix-tf-provider:
+    desc: Remove tf provider binary from quarantine (Mac ONLY)
+    cmds:
+      - find $HOME/.terraform.d/plugins/registry.terraform.io/cyberark/swa/ -type f | xargs xattr -d com.apple.quarantine || true
+
+  swa:install-provider:
+    desc: Install SWA provider to Secrets Manager
+    cmds:
+      - bash ./scripts/install-swa-provider.sh
+  swa:delete-provider:
+    desc: Delete SWA provider from Secrets Manager
+    cmds:
+      - bash ./scripts/delete-swa-provider.sh
+
+  swa:install-server:
+    desc: Install SWA server to k8s
+    cmds:
+      - bash ./scripts/install-swa-server-k8s.sh
+  swa:delete-server:
+    desc: Delete SWA server from k8s
+    cmds:
+      - bash ./scripts/delete-swa-server.sh
+
+  swa:install-agent:
+    desc: Install SWA agent to k8s
+    cmds:
+      - bash ./scripts/install-swa-agent-k8s.sh
+  swa:delete-agent:
+    desc: Delete SWA agent from k8s
+    cmds:
+      - bash ./scripts/delete-swa-agent.sh
+
+  swa:oidc-values:
+    desc: Get OIDC Info
+    cmds:
+      - bash ./scripts/oidc-values.sh
+
+  # ============================================================
+  # TERRAFORM - AZURE
+  # ============================================================
+
+  tf:azure:init:
+    desc: Initialize Terraform for Azure
+    cmds:
+      - bash ./scripts/tf-azure-init.sh
+
+  tf:azure:plan:
+    desc: Plan Azure resources
+    cmds:
+      - bash ./scripts/tf-azure-plan.sh
+
+  tf:azure:apply:
+    desc: Create Azure resources (requires confirmation)
+    prompt: "Create Azure resources? This will provision cloud infrastructure and may incur costs. Continue?"
+    cmds:
+      - bash ./scripts/tf-azure-apply.sh
+
+  tf:azure:destroy:
+    desc: Destroy Azure resources (requires confirmation)
+    prompt: "⚠️  DESTROY all Azure resources? This cannot be undone. Type 'destroy' to confirm:"
+    cmds:
+      - bash ./scripts/tf-azure-destroy.sh
+
+  # ============================================================
+  # Kind
+  # ============================================================
+
+  kind:create:
+    desc: Create/start kind cluster
+    env:
+      TF_VAR_cluster_name:
+        sh: 'echo "$SWA_CLUSTER_NAME"'
+    dir: ./terraform/environments/kind
+    cmds:
+      - |
+        export TF_VAR_prefix="PROJECT_PREFIX"
+        terraform init && terraform apply -auto-approve
+  kind:destroy:
+    desc: Destroy kind cluster
+    env:
+      TF_VAR_cluster_name:
+        sh: 'echo "$SWA_CLUSTER_NAME"'
+    dir: ./terraform/environments/kind
+    cmds:
+      - |
+        export TF_VAR_prefix="PROJECT_PREFIX"
+        terraform destroy -auto-approve
+  kind:clean-terraform-state:
+    desc: Clean the terraform state
+    dir: ./terraform/environments/kind
+    cmds:
+      - terraform state list | xargs terraform state rm
+  kind:load-swa-images:
+    desc: Load the container images locally into kind
+    env:
+      TF_VAR_cluster_name:
+        sh: 'echo "$SWA_CLUSTER_NAME"'
+    cmds:
+      - bash ./scripts/kind-load-swa-images.sh
+  kind:load-app-image:
+    desc: Load the app image locally into kind
+    cmds:
+      - kind load docker-image $APP_NAME:$APP_TAG --name "$SWA_CLUSTER_NAME"
+  kind:load-rogue-app-image:
+    desc: Load the rogue-app image locally into kind
+    cmds:
+      - kind load docker-image $ROGUE_APP_NAME:$ROGUE_APP_TAG --name "$SWA_CLUSTER_NAME"
+  kind:list-images:
+    desc: List images loaded into kind
+    cmds:
+      - docker exec -it "$PROJECT_PREFIX-control-plane" crictl images
+
+  # ============================================================
+  # DEMO APPLICATION
+  # ============================================================
+
+  destroy-all:
+    desc: Destroy kind cluster
+    cmds:
+      - task: conjur:login
+      - task: az:login
+      - task: swa:delete-provider
+      - task: kind:destroy
+      - task: tf:azure:destroy
+
+  deploy-all:
+    desc: Create kind cluster, Secrets Mgr provider, SWA server/agent, and app
+    cmds:
+      - task: az:login
+      - task: kind:create
+      - task: kind:load-swa-images
+      - task: conjur:login
+      - task: swa:install-provider
+      - task: swa:install-server
+      - task: swa:install-agent
+      - task: tf:azure:init
+      - task: tf:azure:apply
+      - task: app:docker-build
+      - task: kind:load-app-image
+      - task: app:helm-deploy
+      - task: rogue-app:docker-build
+      - task: kind:load-rogue-app-image
+      - task: rogue-app:helm-deploy
+      - echo "Use port forward then open browser to http://localhost:8080/"
+      - echo "Ex. kubectl port-forward -n demo-app svc/demo-app 8080:8080"

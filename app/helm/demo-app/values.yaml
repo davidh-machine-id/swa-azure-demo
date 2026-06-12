@@ -1,0 +1,32 @@
+# Image configuration
+image:
+  name: demo-app
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Replica configuration
+replicas: 1
+
+# Namespace
+namespace: default
+
+# Service Account
+serviceAccount:
+  create: true
+  name: demo-app-sa
+
+# Service configuration
+service:
+  type: NodePort
+  port: 8080
+  targetPort: 8080
+  # nodePort will be auto-assigned if not specified
+
+# Application configuration (passed from Terraform outputs)
+config:
+  storageAccountName: ""
+  writeContainerName: ""
+  swaAgentSocketPath: "/tmp/swa-agent/public/api.sock"
+  azureTenantId: ""
+  azureClientId: ""
+  rogueAppAddress: ""

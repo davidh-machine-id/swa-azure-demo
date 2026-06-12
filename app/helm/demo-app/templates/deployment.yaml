@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: demo-app
+    version: {{ .Chart.AppVersion }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+        version: {{ .Chart.AppVersion }}
+    spec:
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+      containers:
+      - name: demo-app
+        image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: STORAGE_ACCOUNT_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: demo-app-config
+              key: storage_account_name
+        - name: WRITE_CONTAINER_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: demo-app-config
+              key: write_container_name
+        - name: SWA_AGENT_SOCKET_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: demo-app-config
+              key: swa_agent_socket_path
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: demo-app-config
+              key: azure_tenant_id
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: demo-app-config
+              key: azure_client_id
+        - name: ROGUE_APP_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: demo-app-config
+              key: rogue_app_address
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: swa-agent-socket
+          mountPath: /tmp/swa-agent/public
+          readOnly: true
+      volumes:
+      - name: swa-agent-socket
+        hostPath:
+          path: /tmp/swa-agent/public
+          type: Directory

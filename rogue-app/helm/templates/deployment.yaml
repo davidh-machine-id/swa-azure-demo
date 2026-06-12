@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{include "rogue-app.fullname" .}}
+  labels:
+    app: {{include "rogue-app.name" .}}
+spec:
+  replicas: {{.Values.replicas}}
+  selector:
+    matchLabels:
+      app: {{include "rogue-app.name" .}}
+  template:
+    metadata:
+      labels:
+        app: {{include "rogue-app.name" .}}
+    spec:
+      serviceAccountName: {{include "rogue-app.serviceAccountName" .}}
+      securityContext: {{- if .Values.securityContext }}{{- toYaml .Values.securityContext | nindent 8 }}{{- else }} {}{{- end }}
+      containers:
+        - name: rogue-app
+          image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{.Values.image.pullPolicy}}
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+          env:
+            - name: SWA_AGENT_SOCKET_PATH
+              value: {{.Values.swa.agentSocketPath}}
+          livenessProbe: {{- toYaml .Values.livenessProbe | nindent 12}}
+          readinessProbe: {{- toYaml .Values.readinessProbe | nindent 12}}
+          resources: {{- if .Values.resources }}{{- toYaml .Values.resources | nindent 12 }}{{- else }} {}{{- end }}
+          volumeMounts:
+            - name: swa-agent-socket
+              mountPath: /tmp/swa-agent
+              readOnly: true
+      volumes:
+        - name: swa-agent-socket
+          hostPath:
+            path: /tmp/swa-agent
+            type: Directory
