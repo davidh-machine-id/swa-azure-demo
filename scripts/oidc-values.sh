@@ -14,7 +14,7 @@ fi
 # shellcheck disable=SC1090
 source "${SETUP_ENV_FILE}"
 
-export TOK=$(bash ${PROJECT_ROOT}/scripts/get-conjur-token.sh)
+TOK=$(bash ${PROJECT_ROOT}/scripts/get-conjur-token.sh)
 curl -sS -X GET "$CONJUR_APPLIANCE_URL/swa/trust-domains/${SWA_TRUST_DOMAIN}" \
 	-H "Authorization: Token token=\"$TOK\"" \
 	-H "Accept: application/x.secretsmgr.v2+json" \
