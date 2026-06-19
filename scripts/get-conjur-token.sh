@@ -30,6 +30,8 @@ if [[ -z "${ID_TENANT}" ]]; then
 	exit 1
 fi
 
+IDUSER="$CONJUR_USER"
+IDPASS="$CONJUR_PASS"
 IDTENANTURL="https://${ID_TENANT}.id.cyberark.cloud"
 IDTOKEN=$($SCRIPT_DIR/idclient-authenticate.sh)
 

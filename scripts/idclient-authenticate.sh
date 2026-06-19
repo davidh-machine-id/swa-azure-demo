@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-set -aeou pipefail
+set -aeo pipefail
 
 if [ -z "$IDTENANTURL" ]; then
-    echo "Set IDTENANTURL and try again."
-    exit 1
+	echo "Set IDTENANTURL and try again."
+	exit 1
 fi
 if [ -z "$IDUSER" ]; then
-    echo "Set IDUSER and try again."
-    exit 1
+	echo "Set IDUSER and try again."
+	exit 1
 fi
 if [ -z "$IDPASS" ]; then
-    echo "Set IDPASS and try again."
-    exit 1
+	echo "Set IDPASS and try again."
+	exit 1
 fi
 
 # REF: https://docs.cyberark.com/conjur-cloud/latest/en/content/developer/conjur_api_authenticate_user.htm

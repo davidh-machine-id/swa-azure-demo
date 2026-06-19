@@ -25,6 +25,12 @@ TF_VAR_resource_group_name="${AZURE_RESOURCE_GROUP}"
 TF_VAR_prefix="${PROJECT_PREFIX}"
 
 OIDC_VALS=$(bash ${PROJECT_ROOT}/scripts/oidc-values.sh)
+if [ $? -ne 0 ]; then
+	echo "ERROR: fetch oidc values failed."
+	echo "- RESPONSE: $OIDC_VALS"
+	exit 1
+fi
+
 TF_VAR_swa_oidc_issuer_url="$(echo $OIDC_VALS | jq -r '.jwt.discovery_endpoints.oidc_discovery_url' | sed 's|/.well-known/openid-configuration||')"
 TF_VAR_spiffe_subject="$SPIFFE_SUBJECT"
 

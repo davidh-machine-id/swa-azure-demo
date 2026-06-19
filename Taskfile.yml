@@ -40,10 +40,17 @@ tasks:
     preconditions:
       - sh: test -n "${AZURE_TENANT_ID}"
         msg: "AZURE_TENANT_ID not set - update setup.env"
+    vars:
+      AID:
+        sh: az account show --query tenantId --output tsv 2> /dev/null || true
     cmds:
       - |
-        AID=$(az account show --query tenantId --output tsv 2> /dev/null || true)
-        if [ "$AZURE_TENANT_ID" != "$AID" ]; then 
+        echo "AZURE TENANT ID - {{.AID}}"
+        if [ -n "{{.AID}}" ] && [ "$AZURE_TENANT_ID" != "{{.AID}}" ]; then
+          echo "ERROR az login tenantId ({{.AID}}) did not match value in setup.env ($AZURE_TENANT_ID)"
+          exit 1
+        fi
+        if [ -z "{{.AID}}" ]; then
           az login --tenant "$AZURE_TENANT_ID"
         fi
   az:create-resource-group:
