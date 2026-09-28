@@ -2,6 +2,14 @@
 
 ## Quick Start
 
+**REQUIRED:** Azure Account with privileges to create resource groups, roles and storage containers
+
+**REQUIRED:** Download swa-release tarfile and put it in the `./dist` directory
+
+- **REQUIRED MINIMUM VERSION:** swa-release `v1.1.4`
+
+Commands to run:
+
 ```bash
 cp setup.env.example setup.env
 
@@ -16,11 +24,8 @@ bash ./scripts/bootstrap.sh
 task swa:extract
 task swa:prep
 
-# ONLY if on a mac and running terraform locally, you may need to clear the quarantine xattr
-task swa:mac-fix-tf-provider
-
 # Deploy to kind cluster
-task deploy-all
+task deploy-all-kind
 ```
 
 ## Quick Start Summary
@@ -52,15 +57,15 @@ $EDITOR setup.env
 
 Required commands:
 
-- `go` — [Install](https://go.dev/doc/install)
-- `terraform` — [Install](https://developer.hashicorp.com/terraform/install)
-- `docker` — [Install](https://www.docker.com/get-started/)
-- `kind` — [Install](https://kind.sigs.k8s.io/docs/user/quick-start#installation)
-- `helm` — [Install](https://helm.sh/docs/intro/install/)
-- `task` — [Install](https://taskfile.dev/docs/installation)
-- `jq` — [Install](https://jqlang.org/download/)
-- `az` (Azure CLI) — [Install](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
-- `conjur` (Secrets Manager CLI) — [Install (SaaS)](https://docs.cyberark.com/secrets-manager-saas/latest/en/content/conjurcloud/cli/cli-setup-new.htm)
+- `go` — [Install Docs](https://go.dev/doc/install)
+- `terraform` — [Install Docs](https://developer.hashicorp.com/terraform/install)
+- `docker` — [Install Docs](https://www.docker.com/get-started/)
+- `kind` — [Install Docs](https://kind.sigs.k8s.io/docs/user/quick-start#installation)
+- `helm` — [Install Docs](https://helm.sh/docs/intro/install/)
+- `task` (go-task) — [Install Docs](https://taskfile.dev/docs/installation)
+- `jq` — [Install Docs](https://jqlang.org/download/)
+- `az` (Azure CLI) — [Install Docs](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
+- `conjur` (Secrets Manager CLI) — [Install Docs (SaaS)](https://docs.cyberark.com/secrets-manager-saas/latest/en/content/conjurcloud/cli/cli-setup-new.htm)
 
 The bootstrap script will check that the required commands are available
 
@@ -69,6 +74,8 @@ bash ./scripts/bootstrap.sh
 ```
 
 ### 2. Download SWA Binaries
+
+**REQUIRED MINIMUM VERSION:** swa-release `v1.1.4`
 
 Download binaries from the marketplace and place the tarball in the `./dist` directory.
 
@@ -80,15 +87,12 @@ Once the tarfile is in `./dist` then run the prep script.
 # Extract the tarball into swa-release dir
 task swa:extract
 task swa:prep
-
-# ONLY if on a mac and running terraform locally, you may need to clear the quarantine attr
-task swa:mac-fix-tf-provider
 ```
 
 ### 3. Deploy Everything to a kind cluster
 
 ```bash
-task deploy-all
+task deploy-all-kind
 ```
 
 ---
