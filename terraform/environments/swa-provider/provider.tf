@@ -1,12 +1,18 @@
 # provider.tf
 
+# https://registry.terraform.io/providers/cyberark/conjur/latest/docs
+
 terraform {
+  required_version = ">= 1.5"
   required_providers {
-    swa = {
-      source = "registry.terraform.io/cyberark/swa"
-      version = "0.1.0-c2081762-821"
+    conjur = {
+      source  = "cyberark/conjur"
+      version = "~> 0.9.12"
     }
   }
 }
 
-provider "swa" {}
+# Configuration is read from the credentials cached by `conjur init` / `conjur login`
+# (~/.conjurrc + netrc), so the block can stay empty. See the `conjur:init` and
+# `conjur:login` tasks in Taskfile.yml.
+provider "conjur" {}

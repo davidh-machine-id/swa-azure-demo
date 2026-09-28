@@ -36,8 +36,8 @@ helm upgrade --install demo-app ./helm/demo-app \
 	--set config.swaAgentSocketPath="$SWA_AGENT_SOCKET_PATH" \
 	--set config.azureTenantId="$AZURE_TENANT_ID" \
 	--set config.azureClientId="$AZURE_CLIENT_ID" \
-	--set config.rogueAppAddress="http://rogue-app.${APP_NAMESPACE}.svc.cluster.local:8081"
+	--set config.rogueAppAddress="http://rogue-app.${APP_NAMESPACE}.svc.cluster.local:8081" \
+	--set service.nodePort=30080
 
 echo "✓ demo-app deployed to $APP_NAMESPACE namespace"
-echo "Use port forward then open browser to http://localhost:8080/"
-echo "Ex. kubectl port-forward -n demo-app svc/demo-app 8080:8080"
+echo "Open browser to http://localhost:8080/"

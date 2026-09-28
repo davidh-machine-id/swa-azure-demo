@@ -1,16 +1,8 @@
 #!/usr/bin/env bash
-set -euo pipefail
-set -a
+set -aeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-SETUP_ENV_FILE="${PROJECT_ROOT}/setup.env"
-if ! [[ -f "${SETUP_ENV_FILE}" ]]; then
-	echo "ERROR: setup.env file does not exist, stopping."
-	echo "       expected ${SETUP_ENV_FILE} to exist."
-	exit 1
-fi
 
 FLAG="${1:-}"
 
@@ -62,31 +54,6 @@ echo "SWA dir=$SWA_K8S_DIR"
 
 cd "${SWA_K8S_DIR}"
 terraform init
-
-if [ "$FLAG" = "-d" ]; then
-	terraform destroy \
-		-var="public_keys=$SWA_PUBLIC_KEYS" \
-		-var="trust_domain_name=$SWA_TRUST_DOMAIN" \
-		-var="jwt_issuer=$SWA_ISSUER" \
-		-var="cluster_name=$SWA_CLUSTER_NAME" \
-		-var="prefix=$PROJECT_PREFIX" \
-		-var="node_group_name=$SWA_NODEGROUP" \
-		-var="server_group_name=$SERVER_GROUP_NAME" \
-		-var="server_name=$SERVER_NAME" \
-		-var="workload_namespace=$APP_NAMESPACE"
-	exit 0
-fi
-
-# terraform plan \
-# 	-var="public_keys=$SWA_PUBLIC_KEYS" \
-# 	-var="trust_domain_name=$SWA_TRUST_DOMAIN" \
-# 	-var="jwt_issuer=$SWA_ISSUER" \
-# 	-var="cluster_name=$SWA_CLUSTER_NAME" \
-# 	-var="prefix=$PROJECT_PREFIX" \
-# 	-var="node_group_name=$SWA_NODEGROUP" \
-# 	-var="server_group_name=$SERVER_GROUP_NAME" \
-# 	-var="server_name=$SERVER_NAME" \
-# 	-var="workload_namespace=$APP_NAMESPACE"
 
 terraform apply -auto-approve \
 	-var="public_keys=$SWA_PUBLIC_KEYS" \

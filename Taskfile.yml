@@ -40,19 +40,11 @@ tasks:
     preconditions:
       - sh: test -n "${AZURE_TENANT_ID}"
         msg: "AZURE_TENANT_ID not set - update setup.env"
-    vars:
-      AID:
-        sh: az account show --query tenantId --output tsv 2> /dev/null || true
     cmds:
       - |
-        echo "AZURE TENANT ID - {{.AID}}"
-        if [ -n "{{.AID}}" ] && [ "$AZURE_TENANT_ID" != "{{.AID}}" ]; then
-          echo "ERROR az login tenantId ({{.AID}}) did not match value in setup.env ($AZURE_TENANT_ID)"
-          exit 1
-        fi
-        if [ -z "{{.AID}}" ]; then
-          az login --tenant "$AZURE_TENANT_ID"
-        fi
+        echo "AZURE TENANT ID - $AZURE_TENANT_ID"
+        az login --tenant "$AZURE_TENANT_ID" --use-device-code
+
   az:create-resource-group:
     desc: Create azure resource group
     preconditions:
@@ -162,11 +154,6 @@ tasks:
     desc: Prepare SWA release (extract helm charts, install provider, validate versions)
     cmds:
       - bash ./scripts/swa-release-prep.sh
-  swa:mac-fix-tf-provider:
-    desc: Remove tf provider binary from quarantine (Mac ONLY)
-    cmds:
-      - find $HOME/.terraform.d/plugins/registry.terraform.io/cyberark/swa/ -type f | xargs xattr -d com.apple.quarantine || true
-
   swa:install-provider:
     desc: Install SWA provider to Secrets Manager
     cmds:
@@ -287,23 +274,30 @@ tasks:
       - task: kind:destroy
       - task: tf:azure:destroy
 
-  deploy-all:
-    desc: Create kind cluster, Secrets Mgr provider, SWA server/agent, and app
+  deploy-swa-kind:
     cmds:
-      - task: az:login
       - task: kind:create
       - task: kind:load-swa-images
       - task: conjur:login
       - task: swa:install-provider
       - task: swa:install-server
       - task: swa:install-agent
+
+  deploy-app-kind:
+    cmds:
+      - task: az:login
       - task: tf:azure:init
       - task: tf:azure:apply
       - task: app:docker-build
-      - task: kind:load-app-image
-      - task: app:helm-deploy
       - task: rogue-app:docker-build
+      - task: kind:load-app-image
       - task: kind:load-rogue-app-image
+      - task: app:helm-deploy
       - task: rogue-app:helm-deploy
-      - echo "Use port forward then open browser to http://localhost:8080/"
-      - echo "Ex. kubectl port-forward -n demo-app svc/demo-app 8080:8080"
+      - echo "Open browser to http://localhost:8080/"
+
+  deploy-all-kind:
+    desc: Create kind cluster, Secrets Mgr provider, SWA server/agent, and app
+    cmds:
+      - task: deploy-swa-kind
+      - task: deploy-app-kind

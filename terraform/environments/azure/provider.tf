@@ -5,10 +5,6 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.0"
     }
-    swa = {
-      source  = "cyberark/swa"
-      version = "0.1.0-c2081762-821"
-    }
   }
 }
 

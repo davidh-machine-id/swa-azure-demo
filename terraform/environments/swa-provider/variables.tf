@@ -16,7 +16,7 @@ variable "prefix" {
 }
 
 variable "cluster_name" {
-  description = "Kubernetes cluster name used as the key under node_attestation.k8s_psat.clusters"
+  description = "Kubernetes cluster name used as the key under attestation.k8s_psat.clusters"
   type        = string
 
   validation {
